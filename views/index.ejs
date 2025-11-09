@@ -1,1 +1,65 @@
- 
+<!DOCTYPE html>
+<html lang="hr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pretraživač Transakcija</title>
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Pretraživač Transakcija</h1>
+            <p>Pregledajte svoje bankovne transakcije</p>
+        </header>
+
+        <nav class="demo-nav">
+            <a href="/" class="active">XSS</a>
+            <a href="/bac-demo">Broken access control</a>
+        </nav>
+
+        <div class="control-panel">
+            <h2>Sigurnosne Postavke</h2>
+            <form action="/toggle-xss" method="POST">
+                <label>
+                    <input type="checkbox" name="xss" <%= xssEnabled ? 'checked' : '' %>>
+                    Uključi XSS ranjivost
+                </label>
+                <button type="submit">Ažuriraj sigurnost</button>
+            </form>
+        </div>
+
+        <div class="search-section">
+            <h2>Pretraži Transakcije</h2>
+            <p>Unesi ključnu riječ za pretragu transakcija:</p>
+            
+            <form action="/" method="GET">
+                <input type="text" name="q" placeholder="npr. plaćanje, račun, shopping..." 
+                       value="<%= lastQuery %>" required>
+                <button type="submit">Pretraži transakcije</button>
+            </form>
+
+            <%- resultHtml %>
+
+            <div class="examples">
+                <h3>Primjeri za testiranje:</h3>
+                <div class="example-grid">
+                    <div class="example-item">
+                        <h4>Normalne pretrage:</h4>
+                        <code>plaćanje</code>
+                        <code>račun</code>
+                        <code>shopping</code>
+                    </div>
+                    <div class="example-item">
+                        <h4>XSS Testovi:</h4>
+                        <code>&lt;script&gt;alert('XSS')&lt;/script&gt;</code>
+                        <code>&lt;img src=x onerror=alert(1)&gt;</code>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/script.js"></script>
+</body>
+</html>

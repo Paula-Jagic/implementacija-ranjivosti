@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="hr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Moj Bankovni Račun</title>
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Online Banka</h1>
+            <p>Pregled korisničkih profila i stanja računa</p>
+        </header>
+
+        <nav class="demo-nav">
+            <a href="/">XSS</a>
+            <a href="/bac-demo" class="active">Broken Access Control</a>
+        </nav>
+
+        <div class="control-panel">
+            <h2>Sigurnosne Postavke</h2>
+            <form action="/toggle-bac" method="POST">
+                <label>
+                    <input type="checkbox" name="bac" <%= bacEnabled ? 'checked' : '' %>>
+                    Uključi Broken Access Control ranjivost
+                </label>
+                <button type="submit">Ažuriraj</button>
+            </form>
+        </div>
+
+        <div class="user-info">
+            <h2>Tvoj Profil</h2>
+            <div class="current-user-card">
+                <p>Korisnik: <%= currentUser.username %></p>
+                <p>ID: <%= currentUser.id %></p>
+                <p>Ime: <%= currentUser.name %></p>
+                <p>Email: <%= currentUser.email %></p>
+                <p>Uloga: <%= currentUser.role %></p>
+                <p>Stanje računa: <span class="balance"><%= currentUser.balance %> EUR</span></p>
+            </div>
+            
+            <form action="/bac-login" method="POST" class="login-form">
+                <label>Promijeni korisnika:</label>
+                <select name="username" onchange="this.form.submit()">
+                    <% users.forEach(user => { %>
+                        <option value="<%= user.username %>" <%= user.username === currentUser.username ? 'selected' : '' %>>
+                            <%= user.username %> (<%= user.role %>)
+                        </option>
+                    <% }); %>
+                </select>
+            </form>
+        </div>
+
+        <div class="search-section">
+            <h2>Pregled Profila</h2>
+            <p>Unesi ID svog profila kako bi dobio korisničke podatke:</p>
+            <p>(Prilikom testiranja BAC-a unesi tuđe ID-eve da vidiš možeš li im pristupiti)</p>
+            
+            <div class="input-group">
+                <input type="number" id="profile-id" placeholder="Unesi ID profila (1-3)" min="1" max="3">
+                <button onclick="accessProfile()">Prikaži profil</button>
+            </div>
+            
+            <div class="url-info">
+                <small>Poziva se: <code id="url-preview">/user/profile/</code></small>
+            </div>
+            
+            <div id="profile-results" class="results-container"></div>
+
+            <div class="user-list">
+                <h3>Dostupni korisnici u sustavu:</h3>
+                <ul>
+                    <% users.forEach(user => { %>
+                        <li>
+                            ID <%= user.id %>: <%= user.username %> 
+                            - <%= user.balance %> EUR
+                            <% if (user.id === currentUser.id) { %>
+                                <span style="color: green;"> (trenutno prijavljen)</span>
+                            <% } %>
+                        </li>
+                    <% }); %>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function updateUrlPreview() {
+            const profileId = document.getElementById('profile-id').value;
+            document.getElementById('url-preview').textContent = `/user/profile/${profileId || ''}`;
+        }
+
+        document.getElementById('profile-id').addEventListener('input', updateUrlPreview);
+
+        async function accessProfile() {
+            const profileId = document.getElementById('profile-id').value;
+            const results = document.getElementById('profile-results');
+            
+            if (!profileId) {
+                results.innerHTML = '<div class="result safe">Molim unesi ID profila!</div>';
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/user/profile/${profileId}`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    let alertHtml = '';
+                    if (data.vulnerable && data.message.includes('tuđi')) {
+                        alertHtml = '<div class="success-alert">Vidiš tuđi profil!</div>';
+                    }
+                    
+                    results.innerHTML = `
+                        <div class="${data.vulnerable && data.message.includes('tuđi') ? 'result vulnerable' : 'result safe'}">
+                            <h3>Podaci o korisniku</h3>
+                            <div class="profile-card">
+                                <p>Korisničko ime: ${data.user.username}</p>
+                                <p>ID: ${data.user.id}</p>
+                                <p>Ime i prezime: ${data.user.name}</p>
+                                <p>Email: ${data.user.email}</p>
+                                <p>Uloga: ${data.user.role}</p>
+                                <p>Stanje računa: <span class="balance">${data.user.balance} EUR</span></p>
+                            </div>
+                            
+                            ${alertHtml}
+                        </div>
+                    `;
+                } else {
+                    results.innerHTML = `
+                        <div class="result safe">
+                            <h3>Neuspješno</h3>
+                            <p>${data.error}</p>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                results.innerHTML = `<div class="result safe">Greška: ${error.message}</div>`;
+            }
+        }
+
+        updateUrlPreview();
+    </script>
+</body>
+</html>
